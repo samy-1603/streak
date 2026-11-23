@@ -40,7 +40,7 @@ class NotificationService {
   static const _channelId = 'habit_reminders';
   static const _channelName = 'Habit Reminders';
   static String get windowsAppId =>
-      isPortable ? 'com.streak.app.portable' : 'com.streak.app';
+      isPortable ? 'io.github.samy1603.cockpit.portable' : 'io.github.samy1603.cockpit';
 
   static const actionDone = 'habit_done';
   static const actionSnooze = 'habit_snooze';
@@ -191,9 +191,9 @@ class NotificationService {
       notificationCategories: _categories(await localizations()),
     );
     final windows = WindowsInitializationSettings(
-      appName: 'Streak',
+      appName: 'Cockpit',
       appUserModelId: windowsAppId,
-      guid: 'cfb32a7d-9c06-495b-8afa-df8829d33edc',
+      guid: '0274d142-380b-4fd3-85f6-048e22147f05',
       iconPath: [
         File(Platform.resolvedExecutable).parent.path,
         'data',

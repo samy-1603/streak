@@ -158,7 +158,7 @@ class _SharePageState extends State<SharePage> {
       if (!await Gal.hasAccess(toAlbum: true)) {
         await Gal.requestAccess(toAlbum: true);
       }
-      await Gal.putImageBytes(bytes, album: 'Streak');
+      await Gal.putImageBytes(bytes, album: 'Cockpit');
       return true;
     }
     final path = await FilePicker.platform.saveFile(

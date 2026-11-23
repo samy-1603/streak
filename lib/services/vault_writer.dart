@@ -9,7 +9,7 @@ import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/data/habit_note.dart';
 import 'package:streak/features/todos/data/todo.dart';
 
-const vaultFolder = 'Streak';
+const vaultFolder = 'Cockpit';
 
 class VaultWriter {
   const VaultWriter._();

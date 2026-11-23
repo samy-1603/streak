@@ -772,7 +772,7 @@ class _RailBrand extends StatelessWidget {
           if (!compact) ...[
           const SizedBox(width: 10),
           Text(
-            'Streak',
+            'Cockpit',
             style: settings.isExpressStyle
                 ? ExpressType.headline.at(
                     17,

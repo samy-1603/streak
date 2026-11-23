@@ -3,24 +3,24 @@
 #endif
 
 [Setup]
-AppId={{EB1BEEEF-EC84-4267-A9E7-078FE4863579}
-AppName=Streak
+AppId={{3B1E9C82-9F07-4928-8D74-1958377FA55E}
+AppName=Cockpit
 AppVersion={#AppVersion}
-AppVerName=Streak {#AppVersion}
-AppPublisher=InlitX
-AppPublisherURL=https://github.com/InlitX/streak
-AppSupportURL=https://github.com/InlitX/streak/issues
-AppUpdatesURL=https://github.com/InlitX/streak/releases
-DefaultDirName={autopf}\Streak
+AppVerName=Cockpit {#AppVersion}
+AppPublisher=samy-1603
+AppPublisherURL=https://github.com/samy-1603/streak
+AppSupportURL=https://github.com/samy-1603/streak/issues
+AppUpdatesURL=https://github.com/samy-1603/streak/releases
+DefaultDirName={autopf}\Cockpit
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\build\installer
-OutputBaseFilename=Streak-windows-x64-setup
+OutputBaseFilename=Cockpit-windows-x64-setup
 SetupIconFile=runner\resources\app_icon.ico
-UninstallDisplayIcon={app}\Streak.exe
-UninstallDisplayName=Streak
+UninstallDisplayIcon={app}\Cockpit.exe
+UninstallDisplayName=Cockpit
 WizardStyle=modern
 Compression=lzma2
 SolidCompression=yes
@@ -45,8 +45,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\Streak"; Filename: "{app}\Streak.exe"; AppUserModelID: "com.streak.app"
-Name: "{autodesktop}\Streak"; Filename: "{app}\Streak.exe"; Tasks: desktopicon; AppUserModelID: "com.streak.app"
+Name: "{autoprograms}\Cockpit"; Filename: "{app}\Cockpit.exe"; AppUserModelID: "io.github.samy1603.cockpit"
+Name: "{autodesktop}\Cockpit"; Filename: "{app}\Cockpit.exe"; Tasks: desktopicon; AppUserModelID: "io.github.samy1603.cockpit"
 
 [Run]
-Filename: "{app}\Streak.exe"; Description: "{cm:LaunchProgram,Streak}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Cockpit.exe"; Description: "{cm:LaunchProgram,Cockpit}"; Flags: nowait postinstall skipifsilent

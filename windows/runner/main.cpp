@@ -9,9 +9,9 @@
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
-  ::CreateMutexW(nullptr, TRUE, L"StreakSingleInstance");
+  ::CreateMutexW(nullptr, TRUE, L"CockpitSingleInstance");
   if (::GetLastError() == ERROR_ALREADY_EXISTS) {
-    HWND running = ::FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", L"Streak");
+    HWND running = ::FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", L"Cockpit");
     if (running) {
       if (::IsIconic(running)) ::ShowWindow(running, SW_RESTORE);
       if (!::IsZoomed(running)) {
@@ -52,7 +52,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1500, 920);
-  if (!window.Create(L"Streak", origin, size)) {
+  if (!window.Create(L"Cockpit", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

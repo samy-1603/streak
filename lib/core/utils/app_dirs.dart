@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:streak/core/database/data_location.dart';
 
-const appDataFolder = 'Streak';
+const appDataFolder = 'Cockpit';
 
 bool get isMobile => Platform.isAndroid || Platform.isIOS;
 
@@ -62,7 +62,7 @@ Future<Directory> _resolveDataDir() async {
   }
   if (used.existsSync()) {
     throw FileSystemException(
-      'Your Streak data lives in Documents\\$appDataFolder, which Windows is not letting the app open right now',
+      'Your Cockpit data lives in Documents\\$appDataFolder, which Windows is not letting the app open right now',
     );
   }
   return support;

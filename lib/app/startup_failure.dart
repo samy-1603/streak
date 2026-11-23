@@ -28,8 +28,8 @@ class StartupFailure extends StatelessWidget {
                 const SizedBox(height: 16),
                 Text(
                   blocked
-                      ? "Windows is blocking Streak's data"
-                      : 'Streak could not open its data',
+                      ? "Windows is blocking Cockpit's data"
+                      : 'Cockpit could not open its data',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white,
