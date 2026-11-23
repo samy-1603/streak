@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:streak/core/database/local_store.dart';
+import 'package:streak/features/focus/data/focus_session.dart';
 import 'package:streak/features/focus/state/focus_controller.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/services/focus_service.dart';
@@ -266,6 +269,112 @@ void main() {
 
       settings = SettingsController();
       expect(settings.focusTrack, '');
+    });
+  });
+
+  group('overtime', () {
+    /// A 25-minute round (a 25/5 Pomodoro unless [breakMinutes] is 0) that
+    /// ended 10 minutes ago.
+    Future<FocusController> roundEndedTenMinutesAgo({
+      int breakMinutes = 5,
+    }) async {
+      await LocalStore.writeSetting('focusActive', {
+        'habitId': 'read',
+        'target': 25,
+        'focus': 25,
+        'break': breakMinutes,
+        'isBreak': false,
+        'round': 1,
+        'acc': 0,
+        'since': DateTime.now()
+            .subtract(const Duration(minutes: 35))
+            .toIso8601String(),
+        'open': true,
+      });
+      await coldStart();
+      final focus = _controller();
+      // Let the timer tick once so it notices the round is over.
+      await Future<void>.delayed(const Duration(milliseconds: 1200));
+      return focus;
+    }
+
+    test('a finished round waits for the break and counts the extra time',
+        () async {
+      final focus = await roundEndedTenMinutesAgo();
+
+      expect(focus.isAwaiting, isTrue);
+      expect(focus.isBreak, isFalse);
+      expect(focus.inOvertime, isTrue);
+      expect(focus.overtimeSeconds, closeTo(600, 3));
+      expect(focus.displaySeconds, closeTo(600, 3));
+    });
+
+    test('keeping the overtime adds it to the saved round', () async {
+      final focus = await roundEndedTenMinutesAgo();
+      final saved = Completer<FocusSession>();
+      focus.onRoundSaved = saved.complete;
+
+      focus.continueNow(keepOvertime: true);
+
+      expect(focus.isBreak, isTrue);
+      expect(focus.inOvertime, isFalse);
+      expect((await saved.future).seconds, closeTo(1500 + 600, 3));
+    });
+
+    test('discarding the overtime saves only the planned round', () async {
+      final focus = await roundEndedTenMinutesAgo();
+      final saved = Completer<FocusSession>();
+      focus.onRoundSaved = saved.complete;
+
+      focus.continueNow(keepOvertime: false);
+
+      expect(focus.isBreak, isTrue);
+      expect((await saved.future).seconds, 1500);
+    });
+
+    test('ending the session during overtime keeps the extra time', () async {
+      final focus = await roundEndedTenMinutesAgo();
+
+      final session = await focus.stop(completed: true);
+
+      expect(session!.seconds, closeTo(1500 + 600, 3));
+    });
+
+    test('a plain timer counts overtime too and keeps it when ended',
+        () async {
+      final focus = await roundEndedTenMinutesAgo(breakMinutes: 0);
+
+      expect(focus.isPomodoro, isFalse);
+      expect(focus.inOvertime, isTrue);
+      expect(focus.displaySeconds, closeTo(600, 3));
+
+      final session = await focus.stop(completed: true);
+      expect(session!.seconds, closeTo(1500 + 600, 3));
+    });
+
+    test('a plain timer can drop its overtime when ended', () async {
+      final focus = await roundEndedTenMinutesAgo(breakMinutes: 0);
+
+      final session = await focus.stop(completed: true, keepOvertime: false);
+      expect(session!.seconds, 1500);
+    });
+
+    test('with overtime turned off, a plain timer stops at its target',
+        () async {
+      await LocalStore.writeSetting('focusOvertime', false);
+      final focus = await roundEndedTenMinutesAgo(breakMinutes: 0);
+
+      expect(focus.inOvertime, isFalse);
+      expect(focus.displaySeconds, 0);
+    });
+
+    test('with overtime turned off, the break starts on its own', () async {
+      await LocalStore.writeSetting('focusOvertime', false);
+      final focus = await roundEndedTenMinutesAgo();
+
+      expect(focus.inOvertime, isFalse);
+      expect(focus.isAwaiting, isFalse);
+      expect(focus.switchIn, greaterThan(0));
     });
   });
 }

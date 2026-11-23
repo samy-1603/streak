@@ -1175,6 +1175,38 @@
   "focus_label_icon": "Icon (optional)",
   "focus_save_timer": "Save timer",
   "focus_remove_timer": "Remove this saved timer?",
+  "focus_rounds": "Rounds",
+  "focus_rounds_before_long": "Rounds before a long break",
+  "focus_rounds_count": "{value}×",
+  "@focus_rounds_count": {
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "focus_long_break_every": "Every {count} rounds, a longer break.",
+  "@focus_long_break_every": {
+    "placeholders": {
+      "count": { "type": "String" }
+    }
+  },
+  "focus_overtime": "Overtime",
+  "focus_overtime_sub": "When the time is up, keep counting while you work on, and wait for you to start the break.",
+  "focus_overtime_title": "Add {time} of overtime?",
+  "@focus_overtime_title": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "focus_overtime_body": "You kept working after the time was up. Add that extra time to this session?",
+  "focus_overtime_add": "Add it",
+  "focus_overtime_discard": "Discard",
+  "focus_preset_long": "{rounds}× → {minutes} min",
+  "@focus_preset_long": {
+    "placeholders": {
+      "rounds": { "type": "String" },
+      "minutes": { "type": "String" }
+    }
+  },
   "focus_days_row": "{count, plural, =1{1 day in a row} other{{count} days in a row}}",
   "@focus_days_row": {
     "placeholders": {

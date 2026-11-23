@@ -36,6 +36,8 @@ const backupSettingKeys = {
   'focusKeepAwake',
   'focusLeadIn',
   'focusLongBreak',
+  'focusLongBreakEvery',
+  'focusOvertime',
   'focusMinutes',
   'focusProfiles',
   'focusRepeatOne',

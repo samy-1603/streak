@@ -162,12 +162,37 @@ class _GoalRing extends StatelessWidget {
 }
 
 class FocusTimer {
-  const FocusTimer(this.minutes, this.breakMinutes);
+  const FocusTimer(
+    this.minutes,
+    this.breakMinutes, {
+    this.longBreak = 0,
+    this.every = 0,
+  });
 
-  static const limit = 6;
+  /// The timer as set up right now: for a Pomodoro, the global long-break
+  /// length and rounds-before-long-break go with it, so a saved preset
+  /// restores the whole cycle.
+  factory FocusTimer.withCycle(
+    int minutes,
+    int breakMinutes,
+    SettingsController settings,
+  ) {
+    final pomodoro = minutes > 0 && breakMinutes > 0;
+    final long = pomodoro ? settings.focusLongBreak : 0;
+    return FocusTimer(
+      minutes,
+      breakMinutes,
+      longBreak: long,
+      every: long > 0 ? settings.focusLongBreakEvery : 0,
+    );
+  }
+
+  static const limit = 10;
 
   final int minutes;
   final int breakMinutes;
+  final int longBreak;
+  final int every;
 
   FocusMode get mode => minutes <= 0
       ? FocusMode.flow
@@ -175,16 +200,29 @@ class FocusTimer {
       ? FocusMode.pomodoro
       : FocusMode.timer;
 
-  String get key => '$minutes:$breakMinutes';
+  bool get hasLongBreak => mode == FocusMode.pomodoro && longBreak > 0 && every > 0;
+
+  String get key => hasLongBreak
+      ? '$minutes:$breakMinutes:$longBreak:$every'
+      : '$minutes:$breakMinutes';
+
+  /// Puts this preset's long-break cycle into the settings the timer runs on.
+  Future<void> applyCycle(SettingsController settings) async {
+    if (mode != FocusMode.pomodoro) return;
+    await settings.setFocusLongBreak(hasLongBreak ? longBreak : 0);
+    if (hasLongBreak) await settings.setFocusLongBreakEvery(every);
+  }
 
   static FocusTimer? parse(Object? raw) {
     if (raw is! String) return null;
     final parts = raw.split(':');
-    if (parts.length != 2) return null;
-    final minutes = int.tryParse(parts[0]);
-    final rest = int.tryParse(parts[1]);
-    if (minutes == null || rest == null) return null;
-    return FocusTimer(minutes, minutes <= 0 ? 0 : rest);
+    if (parts.length != 2 && parts.length != 4) return null;
+    final numbers = parts.map(int.tryParse).toList();
+    if (numbers.contains(null)) return null;
+    final minutes = numbers[0]!;
+    final rest = minutes <= 0 ? 0 : numbers[1]!;
+    if (parts.length == 2) return FocusTimer(minutes, rest);
+    return FocusTimer(minutes, rest, longBreak: numbers[2]!, every: numbers[3]!);
   }
 
   static List<FocusTimer> load() => [
@@ -198,7 +236,8 @@ class FocusTimer {
   String text(BuildContext context) => switch (mode) {
     FocusMode.flow => context.l10n.focus_flowtime,
     FocusMode.pomodoro =>
-      '$minutes + ${context.l10n.minutes_short('$breakMinutes')}',
+      '$minutes + ${context.l10n.minutes_short('$breakMinutes')}'
+          '${hasLongBreak ? '  ·  ${context.l10n.focus_preset_long('$every', '$longBreak')}' : ''}',
     FocusMode.timer => context.l10n.minutes_short('$minutes'),
   };
 
@@ -369,6 +408,9 @@ class _TimerPill extends StatelessWidget {
 
 void startFocusTimer(BuildContext context, Habit habit, FocusTimer timer) {
   final focus = context.read<FocusController>();
+  if (!focus.isActive && timer.every > 0) {
+    timer.applyCycle(context.read<SettingsController>());
+  }
   if (!focus.isActive &&
       (habit.focusMinutes != timer.minutes ||
           habit.focusBreakMinutes != timer.breakMinutes)) {
@@ -406,7 +448,11 @@ class FocusQuickTimers extends StatelessWidget {
   Widget build(BuildContext context) {
     final saved = FocusTimer.load();
     if (saved.isEmpty) return const SizedBox.shrink();
-    final current = FocusTimer(habit.focusMinutes, habit.focusBreakMinutes);
+    final current = FocusTimer.withCycle(
+      habit.focusMinutes,
+      habit.focusBreakMinutes,
+      context.watch<SettingsController>(),
+    );
     final timers = saved.contains(current) ? saved : [current, ...saved];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,

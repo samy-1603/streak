@@ -305,7 +305,9 @@ class FocusService : Service() {
         val next = Button(R.drawable.ic_focus_play, state.optString("continueLabel"), ACTION_NEXT, REQUEST_NEXT)
         val end = Button(R.drawable.ic_focus_stop, state.optString("stopLabel"), ACTION_STOP, REQUEST_STOP)
         return when {
-            state.optString("phase") == PHASE_WAITING -> listOf(next, end)
+            // A plain timer in overtime has no next phase to move on to.
+            state.optString("phase") == PHASE_WAITING ->
+                if ((state.optJSONArray("upcoming")?.length() ?: 0) > 0) listOf(next, end) else listOf(end)
             done && state.optBoolean("hold") -> listOf(next, end)
             done -> listOfNotNull(minute.takeIf { timed }, end)
             !running -> listOf(resume, end)

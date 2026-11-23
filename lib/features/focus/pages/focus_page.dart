@@ -193,12 +193,42 @@ class _FocusPageState extends State<FocusPage> with ShortcutHost {
       _confirmStop();
       return;
     }
+    if (_focus.inOvertime) {
+      _startBreakFromOvertime();
+      return;
+    }
     if (_focus.isAwaiting || _focus.switchIn > 0) {
       _focus.continueNow();
       return;
     }
     HapticFeedback.selectionClick();
     _focus.isRunning ? _focus.pause() : _focus.resume();
+  }
+
+  /// The round ended a while ago and the user kept working: ask whether that
+  /// extra time counts before the break starts. A few seconds of reaction
+  /// time is not worth asking about.
+  Future<void> _startBreakFromOvertime() async {
+    final keep = await _askOvertime();
+    if (keep == null || !mounted || !_focus.inOvertime) return;
+    _focus.continueNow(keepOvertime: keep);
+  }
+
+  /// Whether to keep the overtime: true to add it, false to drop it, null
+  /// when the user backed out. Under a minute is just reaction time, so it
+  /// is dropped without asking.
+  Future<bool?> _askOvertime() async {
+    final over = _focus.overtimeSeconds;
+    if (over < 60) return false;
+    return showAppConfirmDialog(
+      context,
+      title: context.l10n.focus_overtime_title(formatHoursShort(over)),
+      message: context.l10n.focus_overtime_body,
+      confirmLabel: context.l10n.focus_overtime_add,
+      cancelLabel: context.l10n.focus_overtime_discard,
+      icon: LucideIcons.timer,
+      danger: false,
+    );
   }
 
   void _toggleBig() {
@@ -243,6 +273,12 @@ class _FocusPageState extends State<FocusPage> with ShortcutHost {
 
   Future<void> _confirmStop() async {
     final focus = context.read<FocusController>();
+    var keepOvertime = true;
+    if (focus.inOvertime) {
+      final keep = await _askOvertime();
+      if (keep == null || !mounted || !focus.inOvertime) return;
+      keepOvertime = keep;
+    }
     if (focus.isPomodoro && focus.isBreak) {
       setState(() => _leaving = true);
       await focus.stop(completed: true);
@@ -292,7 +328,10 @@ class _FocusPageState extends State<FocusPage> with ShortcutHost {
     final habitId = focus.habitId;
     final todoId = focus.todoId;
     final completed = reached || result == 'done';
-    final session = await focus.stop(completed: completed);
+    final session = await focus.stop(
+      completed: completed,
+      keepOvertime: keepOvertime,
+    );
     if (!mounted) return;
     await creditFocusTodo(context.read<TodosController>(), todoId, session);
     if (!mounted) return;
@@ -446,7 +485,11 @@ class _FocusPageState extends State<FocusPage> with ShortcutHost {
                               : focus.displaySeconds,
                           progress: leading ? 0 : focus.progress,
                           color: color ?? accent,
-                          label: paused ? context.l10n.focus_paused : label,
+                          label: paused
+                              ? context.l10n.focus_paused
+                              : focus.inOvertime
+                              ? context.l10n.focus_overtime
+                              : label,
                           size: _clockSize(constraints, landscape),
                           paused: paused,
                           resting: onBreak && switchIn == 0 && !leading,
@@ -471,7 +514,7 @@ class _FocusPageState extends State<FocusPage> with ShortcutHost {
                     awaiting: focus.isAwaiting || focus.switchIn > 0,
                     finished: focus.isFinished,
                     onSkip: focus.isBreak && !focus.isAwaiting && focus.switchIn == 0 ? focus.skipBreak : null,
-                    onAddMinute: focus.isFlow ? null : focus.addMinute,
+                    onAddMinute: focus.isFlow || focus.inOvertime ? null : focus.addMinute,
                     onToggle: _toggleRunning,
                     onStop: _confirmStop,
                   ),
@@ -511,7 +554,7 @@ class _FocusPageState extends State<FocusPage> with ShortcutHost {
                       finished: focus.isFinished,
                       onToggle: _toggleRunning,
                       onSkip: focus.isBreak && !focus.isAwaiting && focus.switchIn == 0 ? focus.skipBreak : null,
-                      onAddMinute: focus.isFlow ? null : focus.addMinute,
+                      onAddMinute: focus.isFlow || focus.inOvertime ? null : focus.addMinute,
                       onStop: _confirmStop,
                     ),
                   );

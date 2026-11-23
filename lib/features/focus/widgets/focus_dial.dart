@@ -581,6 +581,7 @@ class FocusChoiceRow extends StatelessWidget {
     required this.onPick,
     required this.onCustom,
     this.title,
+    this.format,
   });
 
   final List<int> presets;
@@ -589,9 +590,13 @@ class FocusChoiceRow extends StatelessWidget {
   final VoidCallback onCustom;
   final String? title;
 
+  /// How a value is written on its chip; minutes when not given.
+  final String Function(int value)? format;
+
   @override
   Widget build(BuildContext context) {
     final custom = !presets.contains(value);
+    final label = format ?? (n) => context.l10n.minutes_short('$n');
     return Row(
       children: [
         if (title != null) ...[
@@ -601,7 +606,7 @@ class FocusChoiceRow extends StatelessWidget {
         for (final preset in presets) ...[
           Expanded(
             child: _Choice(
-              label: context.l10n.minutes_short('$preset'),
+              label: label(preset),
               selected: value == preset,
               onTap: () => onPick(preset),
             ),
@@ -610,7 +615,7 @@ class FocusChoiceRow extends StatelessWidget {
         ],
         Expanded(
           child: _Choice(
-            label: custom ? context.l10n.minutes_short('$value') : null,
+            label: custom ? label(value) : null,
             semantics: context.l10n.focus_custom_duration,
             selected: custom,
             onTap: onCustom,

@@ -15,6 +15,7 @@ import 'package:streak/features/settings/state/settings_controller.dart';
 const focusPresets = [25, 45];
 const focusBreakPresets = [5, 15];
 const focusLongBreakPresets = [15, 30];
+const focusRoundPresets = [3, 4, 5];
 
 class FocusDurationChips extends StatelessWidget {
   const FocusDurationChips({
@@ -165,7 +166,9 @@ class FocusPomodoroCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   _PomodoroOption(
                     title: context.l10n.focus_long_break,
-                    subtitle: context.l10n.focus_long_break_sub,
+                    subtitle: context.l10n.focus_long_break_every(
+                      '${style.focusLongBreakEvery}',
+                    ),
                     value: style.focusLongBreak > 0,
                     onChanged: (on) => style.setFocusLongBreak(on ? 15 : 0),
                   ),
@@ -182,6 +185,12 @@ class FocusPomodoroCard extends StatelessWidget {
                     subtitle: context.l10n.focus_auto_next_sub,
                     value: style.focusAutoNext,
                     onChanged: style.setFocusAutoNext,
+                  ),
+                  _PomodoroOption(
+                    title: context.l10n.focus_overtime,
+                    subtitle: context.l10n.focus_overtime_sub,
+                    value: style.focusOvertime,
+                    onChanged: style.setFocusOvertime,
                   ),
                   _PomodoroOption(
                     title: context.l10n.focus_whole_rounds,

@@ -96,6 +96,10 @@ class FocusController extends ChangeNotifier {
   DateTime? _since;
   DateTime? _began;
   int _pauses = 0;
+
+  /// When a Pomodoro focus round ended and the break was not started yet:
+  /// from then on the time counts as overtime, which the user can keep.
+  DateTime? _overFrom;
   Timer? _ticker;
   List<FocusSession>? _view;
   Map<String, int>? _perDay;
@@ -188,8 +192,26 @@ class FocusController extends ChangeNotifier {
   bool get isPomodoro => _breakMinutes > 0;
   int get focusMinutes => _focusMinutes;
   int get breakMinutes => _breakMinutes;
-  static const longBreakEvery = 4;
+  int get longBreakEvery =>
+      LocalStore.setting('focusLongBreakEvery', 4).clamp(2, 12);
   bool get _autoNext => LocalStore.setting('focusAutoNext', false);
+  bool get _overtimeOn => LocalStore.setting('focusOvertime', true);
+
+  /// Whether time spent past the end of this timed focus round is counted
+  /// as overtime (for a plain timer and for a Pomodoro round alike).
+  bool get _countsOvertime => _overtimeOn && !_isBreak && !isFlow;
+
+  /// Whether this Pomodoro round waits for the break to be started by hand,
+  /// counting the extra time as overtime meanwhile.
+  bool get _holdsForOvertime => isPomodoro && _countsOvertime;
+
+  bool get inOvertime => _overFrom != null;
+
+  int overtimeAt(DateTime at) => _overFrom == null
+      ? 0
+      : at.difference(_overFrom!).inSeconds.clamp(0, 1 << 30);
+
+  int get overtimeSeconds => overtimeAt(DateTime.now());
   int get _longBreakMinutes => LocalStore.setting('focusLongBreak', 0);
   bool get isLongBreak =>
       _isBreak && _longBreakMinutes > 0 && _round % longBreakEvery == 0;
@@ -222,7 +244,7 @@ class FocusController extends ChangeNotifier {
       id: '',
       habitId: _habitId,
       targetMinutes: _isBreak ? 0 : _focusMinutes,
-      seconds: elapsedAt(now),
+      seconds: elapsedAt(now) + overtimeAt(now),
       completed: false,
       startedAt: now,
       span: _isBreak ? 0 : _spanTo(finished ? _phaseEnd : now),
@@ -240,7 +262,11 @@ class FocusController extends ChangeNotifier {
   int get remainingSeconds =>
       isFlow ? 0 : (targetSeconds - elapsedSeconds).clamp(0, targetSeconds);
 
-  int get displaySeconds => isFlow ? elapsedSeconds : remainingSeconds;
+  int get displaySeconds => inOvertime
+      ? overtimeSeconds
+      : isFlow
+      ? elapsedSeconds
+      : remainingSeconds;
 
   double get progress => isFlow
       ? (elapsedSeconds % 60) / 60
@@ -318,16 +344,19 @@ class FocusController extends ChangeNotifier {
     unawaited(FocusAudio.resume());
   }
 
-  void continueNow({DateTime? at}) {
+  /// Moves on to the next phase. When leaving a focus round in overtime,
+  /// [keepOvertime] decides whether the extra time is added to the round.
+  void continueNow({DateTime? at, bool keepOvertime = true}) {
     if (!_awaiting && !(isPomodoro && reachedTarget)) return;
     _awaiting = false;
     unawaited(FocusAudio.stopAlert(resume: _isBreak));
-    _advancePhase(at: at);
+    _advancePhase(at: at, keepOvertime: keepOvertime);
   }
 
   void reset() {
     _awaiting = false;
     _switchIn = 0;
+    _overFrom = null;
     unawaited(FocusAudio.stopAlert());
     _accumulated = 0;
     _since = isRunning ? DateTime.now() : null;
@@ -344,6 +373,7 @@ class FocusController extends ChangeNotifier {
     if (!_open || isFlow) return;
     _awaiting = false;
     _switchIn = 0;
+    _overFrom = null;
     unawaited(FocusAudio.stopAlert());
     if (reachedTarget) {
       _accumulated = targetSeconds;
@@ -361,6 +391,7 @@ class FocusController extends ChangeNotifier {
     if (!_open || _isBreak) return;
     _awaiting = false;
     _switchIn = 0;
+    _overFrom = null;
     unawaited(FocusAudio.stopAlert());
     final at = DateTime.now();
     final raw = _accumulated + (_since == null ? 0 : at.difference(_since!).inSeconds);
@@ -427,18 +458,27 @@ class FocusController extends ChangeNotifier {
     return null;
   }
 
-  Future<FocusSession?> stop({required bool completed, DateTime? at}) async {
+  /// Ends the session. Any overtime is kept unless [keepOvertime] is false.
+  Future<FocusSession?> stop({
+    required bool completed,
+    DateTime? at,
+    bool keepOvertime = true,
+  }) async {
     final endedAt = at ?? DateTime.now();
     final dropped = isPomodoro &&
         !completed &&
         LocalStore.setting('focusWholeRounds', false);
-    final seconds = _isBreak || dropped ? 0 : elapsedAt(endedAt);
+    final over = _isBreak || !keepOvertime ? 0 : overtimeAt(endedAt);
+    final seconds = _isBreak || dropped ? 0 : elapsedAt(endedAt) + over;
     final habitId = _habitId;
     final label = _label;
     final target = _focusMinutes;
     final finished = !isFlow && _since != null && elapsedAt(endedAt) >= targetSeconds;
-    final span = _isBreak ? 0 : _spanTo(finished ? _phaseEnd : endedAt);
+    final span = _isBreak
+        ? 0
+        : _spanTo(finished ? _phaseEnd.add(Duration(seconds: over)) : endedAt);
     final pauses = _pauses;
+    _overFrom = null;
     _stopTicker();
     _awaiting = false;
     _switchIn = 0;
@@ -489,10 +529,12 @@ class FocusController extends ChangeNotifier {
     onRoundSaved?.call(session);
   }
 
-  void _advancePhase({DateTime? at}) {
-    final endedAt = _phaseEnd;
+  void _advancePhase({DateTime? at, bool keepOvertime = true}) {
+    final over = keepOvertime ? overtimeAt(at ?? DateTime.now()) : 0;
+    _overFrom = null;
+    final endedAt = _phaseEnd.add(Duration(seconds: over));
     if (!_isBreak) {
-      final seconds = elapsedAt(endedAt);
+      final seconds = elapsedAt(endedAt) + over;
       if (seconds >= 30) {
         unawaited(
           _saveRound(
@@ -565,7 +607,12 @@ class FocusController extends ChangeNotifier {
         completedTick.value++;
         if (!isMobile) unawaited(_announceEnd(breakEnded: _isBreak));
         final always = isPomodoro && LocalStore.setting('focusHold', false);
-        final hold = always || (isPomodoro && _isBreak && !_autoNext);
+        final overtime = _countsOvertime;
+        // Keep ticking past the end so the overtime counter stays live.
+        if (overtime) _overFrom ??= _phaseEnd;
+        final hold = always ||
+            _holdsForOvertime ||
+            (isPomodoro && _isBreak && !_autoNext);
         if (DateTime.now().difference(_phaseEnd).inSeconds < 60) {
           unawaited(
             FocusAudio.alert(
@@ -579,7 +626,7 @@ class FocusController extends ChangeNotifier {
         }
         if (hold) {
           _awaiting = true;
-          _stopTicker();
+          if (!overtime) _stopTicker();
           _persist();
           _sync();
           notifyListeners();
@@ -587,7 +634,7 @@ class FocusController extends ChangeNotifier {
           _switchIn = switchDelay;
           _sync();
         } else {
-          _stopTicker();
+          if (!overtime) _stopTicker();
           _sync();
           notifyListeners();
         }
@@ -616,12 +663,16 @@ class FocusController extends ChangeNotifier {
   }
 
   Future<void> _announceEnd({required bool breakEnded}) async {
-    final (title, body) = await _endTexts(breakEnded: breakEnded);
-    await NotificationService().showFocusEnd(
-      title: title,
-      body: body,
-      habitId: _habitId,
-    );
+    try {
+      final (title, body) = await _endTexts(breakEnded: breakEnded);
+      await NotificationService().showFocusEnd(
+        title: title,
+        body: body,
+        habitId: _habitId,
+      );
+    } catch (e) {
+      debugPrint('Focus end notification failed: $e');
+    }
   }
 
   Future<void> _syncEndAlarm() async {
@@ -665,8 +716,11 @@ class FocusController extends ChangeNotifier {
           : habit == null
           ? _label
           : '$habit · $_label';
+      final over = inOvertime;
       final done = _awaiting || _switchIn > 0 || (reachedTarget && !isPomodoro);
-      final label = _awaiting
+      final label = over
+          ? strings.focus_overtime
+          : _awaiting
           ? strings.focus_continue
           : _switchIn > 0
           ? (_isBreak ? strings.focus_back_in : strings.focus_break_in)('$_switchIn')
@@ -679,7 +733,7 @@ class FocusController extends ChangeNotifier {
                   : isFlow
                       ? strings.focus_flowtime
                       : strings.focus_notif_running;
-      final phase = _awaiting
+      final phase = _awaiting || over
           ? 'waiting'
           : done
           ? 'done'
@@ -697,12 +751,13 @@ class FocusController extends ChangeNotifier {
             ? '$label  ·  ${strings.focus_round(_round)}'
             : label,
         phase: phase,
-        running: isRunning && !done,
-        done: done,
-        countDown: !isFlow,
+        // In overtime the notification clock counts up from the round's end.
+        running: over || (isRunning && !done),
+        done: done && !over,
+        countDown: !isFlow && !over,
         seconds: displaySeconds,
-        anchor: _anchorMs,
-        total: isFlow ? 0 : targetSeconds,
+        anchor: over ? _overFrom!.millisecondsSinceEpoch : _anchorMs,
+        total: isFlow || over ? 0 : targetSeconds,
         channelName: strings.focus_notif_channel,
         pauseLabel: strings.focus_pause,
         resumeLabel: strings.focus_resume,
@@ -712,7 +767,9 @@ class FocusController extends ChangeNotifier {
         minuteLabel: '+${strings.minutes_short('1')}',
         endTitle: endTitle,
         endBody: endBody,
-        hold: always || (isPomodoro && _isBreak && !_autoNext),
+        hold: always ||
+            _holdsForOvertime ||
+            (isPomodoro && _isBreak && !_autoNext),
         upcoming: isPomodoro ? _upcoming(strings, always: always) : const [],
       );
     } catch (e) {
@@ -726,13 +783,14 @@ class FocusController extends ChangeNotifier {
   }) {
     final phases = <Map<String, Object>>[];
     final auto = _autoNext;
+    final every = longBreakEvery;
     var round = _round;
     var onBreak = _isBreak;
     for (var i = 0; i < 8; i++) {
       if (onBreak) round++;
       onBreak = !onBreak;
       final long =
-          onBreak && _longBreakMinutes > 0 && round % longBreakEvery == 0;
+          onBreak && _longBreakMinutes > 0 && round % every == 0;
       final minutes = !onBreak
           ? _focusMinutes
           : long
@@ -747,7 +805,7 @@ class FocusController extends ChangeNotifier {
         'total': minutes * 60,
         'state': '$label  ·  ${strings.focus_round(round)}',
         'phase': onBreak ? 'break' : 'running',
-        'hold': always || (onBreak && !auto),
+        'hold': always || (onBreak && !auto) || (!onBreak && _overtimeOn),
         'endTitle': onBreak ? strings.focus_break_over : strings.focus_done_title,
         'endBody': onBreak ? strings.focus_notif_back : strings.focus_notif_break,
       });

@@ -98,10 +98,14 @@ class _FocusSetupPageState extends State<FocusSetupPage> with ShortcutHost {
     _pomodoro = mode == FocusMode.pomodoro;
   });
 
-  FocusTimer get _current =>
-      FocusTimer(_minutes, _mode == FocusMode.pomodoro ? _breakMinutes : 0);
+  FocusTimer get _current => FocusTimer.withCycle(
+    _minutes,
+    _mode == FocusMode.pomodoro ? _breakMinutes : 0,
+    context.read<SettingsController>(),
+  );
 
   void _apply(FocusTimer timer) => setState(() {
+    timer.applyCycle(context.read<SettingsController>());
     if (timer.mode == FocusMode.flow) {
       if (_minutes > 0) _lastMinutes = _minutes;
       _minutes = 0;
@@ -168,6 +172,19 @@ class _FocusSetupPageState extends State<FocusSetupPage> with ShortcutHost {
     );
     if (value == null || !mounted) return;
     settings.setFocusLongBreak(value.round().clamp(1, 120));
+  }
+
+  Future<void> _customRounds() async {
+    final settings = context.read<SettingsController>();
+    final value = await showNumberKeypadDialog(
+      context,
+      title: context.l10n.focus_rounds_before_long,
+      value: settings.focusLongBreakEvery.toDouble(),
+      unit: '×',
+      min: 2,
+    );
+    if (value == null || !mounted) return;
+    settings.setFocusLongBreakEvery(value.round());
   }
 
   Future<void> _openHabits(List<Habit> habits) async {
@@ -249,6 +266,14 @@ class _FocusSetupPageState extends State<FocusSetupPage> with ShortcutHost {
           onPick: _setMinutes,
           onCustom: _customMinutes,
         ),
+        if (_mode == FocusMode.timer) ...[
+          const SizedBox(height: 12),
+          FocusOptionTag(
+            label: context.l10n.focus_overtime,
+            on: settings.focusOvertime,
+            onTap: () => settings.setFocusOvertime(!settings.focusOvertime),
+          ),
+        ],
         if (_mode == FocusMode.pomodoro) ...[
           const SizedBox(height: 12),
           FocusChoiceRow(
@@ -277,6 +302,11 @@ class _FocusSetupPageState extends State<FocusSetupPage> with ShortcutHost {
                 onTap: () => settings.setFocusAutoNext(!settings.focusAutoNext),
               ),
               FocusOptionTag(
+                label: context.l10n.focus_overtime,
+                on: settings.focusOvertime,
+                onTap: () => settings.setFocusOvertime(!settings.focusOvertime),
+              ),
+              FocusOptionTag(
                 label: context.l10n.focus_whole_rounds,
                 on: settings.focusWholeRounds,
                 onTap: () =>
@@ -292,6 +322,15 @@ class _FocusSetupPageState extends State<FocusSetupPage> with ShortcutHost {
               onPick: settings.setFocusLongBreak,
               onCustom: _customLongBreak,
               title: context.l10n.focus_long_break,
+            ),
+            const SizedBox(height: 12),
+            FocusChoiceRow(
+              presets: focusRoundPresets,
+              value: settings.focusLongBreakEvery,
+              onPick: settings.setFocusLongBreakEvery,
+              onCustom: _customRounds,
+              title: context.l10n.focus_rounds,
+              format: (n) => context.l10n.focus_rounds_count('$n'),
             ),
           ],
         ],
