@@ -7,6 +7,7 @@ import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/utils/app_dirs.dart';
 import 'package:streak/features/focus/data/focus_session.dart';
 import 'package:streak/features/focus/state/focus_audio.dart';
+import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/l10n/app_localizations.dart';
 import 'package:streak/services/focus_service.dart';
 import 'package:streak/services/home_widget_service.dart';
@@ -196,6 +197,15 @@ class FocusController extends ChangeNotifier {
       LocalStore.setting('focusLongBreakEvery', 4).clamp(2, 12);
   bool get _autoNext => LocalStore.setting('focusAutoNext', false);
   bool get _overtimeOn => LocalStore.setting('focusOvertime', true);
+
+  String get _alertStyle =>
+      LocalStore.setting('focusAlertStyle', SettingsController.alertSound);
+
+  /// The alarm sound to play when a round ends; silent when only a buzz
+  /// is wanted.
+  String get _alertSound => _alertStyle == SettingsController.alertVibrate
+      ? FocusAudio.silentAlert
+      : LocalStore.setting('focusAlert', '');
 
   /// Whether time spent past the end of this timed focus round is counted
   /// as overtime (for a plain timer and for a Pomodoro round alike).
@@ -600,7 +610,7 @@ class FocusController extends ChangeNotifier {
       if (!_celebrated &&
           !isFlow &&
           remainingSeconds <= FocusAudio.fadeSeconds) {
-        unawaited(FocusAudio.fadeOut(LocalStore.setting('focusAlert', '')));
+        unawaited(FocusAudio.fadeOut(_alertSound));
       }
       if (!_celebrated && reachedTarget) {
         _celebrated = true;
@@ -616,11 +626,14 @@ class FocusController extends ChangeNotifier {
         if (DateTime.now().difference(_phaseEnd).inSeconds < 60) {
           unawaited(
             FocusAudio.alert(
-              LocalStore.setting('focusAlert', ''),
+              _alertSound,
               loop: always,
               resume: !isPomodoro || _isBreak,
             ),
           );
+          if (_alertStyle != SettingsController.alertSound) {
+            unawaited(FocusService.vibrate());
+          }
         } else {
           unawaited(FocusAudio.stopAlert());
         }
@@ -771,6 +784,7 @@ class FocusController extends ChangeNotifier {
             _holdsForOvertime ||
             (isPomodoro && _isBreak && !_autoNext),
         upcoming: isPomodoro ? _upcoming(strings, always: always) : const [],
+        alertStyle: _alertStyle,
       );
     } catch (e) {
       debugPrint('Focus notification sync failed: $e');

@@ -50,6 +50,7 @@ object FocusState {
         state.put("done", arguments["done"] as? Boolean ?: false)
         state.put("countDown", countDown)
         state.put("hold", arguments["hold"] as? Boolean ?: false)
+        state.put("alertStyle", arguments["alertStyle"] as? String ?: "")
         state.put("upcoming", JSONArray().apply {
             (arguments["upcoming"] as? List<*>)?.forEach { phase ->
                 (phase as? Map<*, *>)?.let { put(JSONObject(it)) }

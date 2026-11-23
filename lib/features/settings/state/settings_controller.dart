@@ -134,6 +134,7 @@ class SettingsController extends ChangeNotifier {
     _focusLongBreak = LocalStore.setting('focusLongBreak', 0);
     _focusLongBreakEvery = LocalStore.setting('focusLongBreakEvery', 4);
     _focusOvertime = LocalStore.setting('focusOvertime', true);
+    _focusAlertStyle = LocalStore.setting('focusAlertStyle', alertSound);
     _focusImages =
         List<String>.from(LocalStore.setting('focusImages', const <String>[]));
     _hiddenScenes =
@@ -240,6 +241,12 @@ class SettingsController extends ChangeNotifier {
   late int _focusLongBreak;
   late int _focusLongBreakEvery;
   late bool _focusOvertime;
+  late String _focusAlertStyle;
+
+  /// How the end of a round is announced: a sound, a buzz, or both.
+  static const alertSound = 'sound';
+  static const alertVibrate = 'vibrate';
+  static const alertBoth = 'both';
   late List<String> _focusImages;
   late List<int> _hiddenScenes;
   late List<String> _hiddenTracks;
@@ -567,6 +574,7 @@ class SettingsController extends ChangeNotifier {
   int get focusLongBreak => _focusLongBreak;
   int get focusLongBreakEvery => _focusLongBreakEvery;
   bool get focusOvertime => _focusOvertime;
+  String get focusAlertStyle => _focusAlertStyle;
   List<String> get focusImages => List.unmodifiable(_focusImages);
 
   List<int> get hiddenScenes => List.unmodifiable(_hiddenScenes);
@@ -693,6 +701,12 @@ class SettingsController extends ChangeNotifier {
   Future<void> setFocusLongBreakEvery(int rounds) async {
     _focusLongBreakEvery = rounds.clamp(2, 12);
     await LocalStore.writeSetting('focusLongBreakEvery', _focusLongBreakEvery);
+    notifyListeners();
+  }
+
+  Future<void> setFocusAlertStyle(String value) async {
+    _focusAlertStyle = value;
+    await LocalStore.writeSetting('focusAlertStyle', value);
     notifyListeners();
   }
 

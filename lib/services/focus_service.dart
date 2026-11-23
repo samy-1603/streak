@@ -56,8 +56,10 @@ class FocusService {
     required String endBody,
     required bool hold,
     required List<Map<String, Object>> upcoming,
+    String alertStyle = 'sound',
   }) =>
       _invoke('show', {
+        'alertStyle': alertStyle,
         'habitId': habitId,
         'title': title,
         'state': state,
@@ -82,6 +84,12 @@ class FocusService {
       });
 
   static Future<void> hide() => _invoke('hide', const {});
+
+  /// A short alarm buzz (Android only; elsewhere nothing happens).
+  static Future<void> vibrate() async {
+    if (kIsWeb || !Platform.isAndroid) return;
+    await _invoke('vibrate', const {});
+  }
 
   static Future<List<FocusAction>> drain() async {
     if (!_available) return const [];

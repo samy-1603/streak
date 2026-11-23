@@ -17,6 +17,7 @@ import 'package:streak/features/focus/widgets/focus_backgrounds.dart';
 import 'package:streak/features/focus/widgets/focus_video_scene.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/core/widgets/glass.dart';
+import 'package:streak/services/focus_service.dart';
 
 class _SceneArt extends StatelessWidget {
   const _SceneArt();
@@ -342,20 +343,61 @@ class _AlertRow extends StatelessWidget {
     );
   }
 
+  static const _styles = [
+    SettingsController.alertSound,
+    SettingsController.alertVibrate,
+    SettingsController.alertBoth,
+  ];
+
+  String _styleLabel(BuildContext context, String style) => switch (style) {
+    SettingsController.alertVibrate => context.l10n.focus_alert_style_vibrate,
+    SettingsController.alertBoth => context.l10n.focus_alert_style_both,
+    _ => context.l10n.focus_alert_style_sound,
+  };
+
+  Future<void> _pickStyle(BuildContext context) async {
+    await showOptionSheet(
+      context,
+      title: context.l10n.focus_alert_style,
+      options: [for (final style in _styles) _styleLabel(context, style)],
+      index: _styles.indexOf(settings.focusAlertStyle).clamp(0, 2),
+      onSelected: (index) async {
+        final style = _styles[index];
+        await settings.setFocusAlertStyle(style);
+        // Let the user feel the new choice right away.
+        if (style != SettingsController.alertSound) await FocusService.vibrate();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: Icon(LucideIcons.bellRing, color: context.colors.onSurface),
-          title: Text(context.l10n.focus_alert, style: sheetOptionStyle(context)),
+          leading: Icon(LucideIcons.vibrate, color: context.colors.onSurface),
+          title: Text(
+            context.l10n.focus_alert_style,
+            style: sheetOptionStyle(context),
+          ),
           subtitle: Text(
-            _label(context),
+            _styleLabel(context, settings.focusAlertStyle),
             style: TextStyle(fontSize: 12.5, color: context.tokens.muted),
           ),
-          onTap: () => _pick(context),
+          onTap: () => _pickStyle(context),
         ),
+        if (settings.focusAlertStyle != SettingsController.alertVibrate)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(LucideIcons.bellRing, color: context.colors.onSurface),
+            title: Text(context.l10n.focus_alert, style: sheetOptionStyle(context)),
+            subtitle: Text(
+              _label(context),
+              style: TextStyle(fontSize: 12.5, color: context.tokens.muted),
+            ),
+            onTap: () => _pick(context),
+          ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           value: settings.focusHold,

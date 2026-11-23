@@ -47,6 +47,10 @@ object FocusBridge {
                 result.success(true)
             }
             "drain" -> result.success(drain(context))
+            "vibrate" -> {
+                FocusService.buzz(context)
+                result.success(true)
+            }
             else -> result.notImplemented()
         }
     }

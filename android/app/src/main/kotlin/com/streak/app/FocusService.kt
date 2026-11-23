@@ -14,11 +14,16 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.drawable.Icon
+import android.media.AudioAttributes
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
+import android.os.VibrationAttributes
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.view.View
 import android.widget.RemoteViews
 import androidx.annotation.RequiresApi
@@ -123,6 +128,11 @@ class FocusService : Service() {
         if (!state.optBoolean("countDown") || FocusState.seconds(state) > 0) return
         val title = state.optString("endTitle")
         if (title.isEmpty()) return
+        // While the app is attached it plays the alarm itself (sound and/or
+        // buzz). Otherwise this notification is the alarm: it buzzes when
+        // vibration is wanted and stays silent when only vibration is.
+        val style = state.optString("alertStyle")
+        if (!FocusBridge.attached && (style == STYLE_VIBRATE || style == STYLE_BOTH)) buzz(this)
         val manager = getSystemService(NotificationManager::class.java) ?: return
         if (manager.getNotificationChannel(END_CHANNEL_ID) == null) {
             manager.createNotificationChannel(
@@ -137,7 +147,7 @@ class FocusService : Service() {
                 .setContentText(state.optString("endBody"))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
-                .setSilent(FocusBridge.attached)
+                .setSilent(FocusBridge.attached || style == STYLE_VIBRATE)
                 .setAutoCancel(true)
                 .setContentIntent(open())
                 .build(),
@@ -420,6 +430,38 @@ class FocusService : Service() {
         private const val END_ID = -987654
 
         private const val PROMOTED = "android.requestPromotedOngoing"
+
+        const val STYLE_VIBRATE = "vibrate"
+        const val STYLE_BOTH = "both"
+
+        private val BUZZ = longArrayOf(0, 500, 250, 500, 250, 800)
+
+        /** A short alarm buzz; counts as an alarm, so it is felt in silent mode too. */
+        fun buzz(context: Context) {
+            val vibrator = if (Build.VERSION.SDK_INT >= 31) {
+                context.getSystemService(VibratorManager::class.java)?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            }
+            if (vibrator == null || !vibrator.hasVibrator()) return
+            val effect = VibrationEffect.createWaveform(BUZZ, -1)
+            try {
+                if (Build.VERSION.SDK_INT >= 33) {
+                    vibrator.vibrate(
+                        effect,
+                        VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM),
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(
+                        effect,
+                        AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build(),
+                    )
+                }
+            } catch (e: Exception) {
+            }
+        }
 
         fun show(context: Context, state: JSONObject) {
             FocusState.save(context, state)

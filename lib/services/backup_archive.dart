@@ -25,6 +25,7 @@ const backupSettingKeys = {
   'dayCutoff',
   'difficultyOption',
   'focusAlert',
+  'focusAlertStyle',
   'focusAutoNext',
   'focusBreakMinutes',
   'focusClockStyle',
