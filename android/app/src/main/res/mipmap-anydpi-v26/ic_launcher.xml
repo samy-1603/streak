@@ -1,14 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Cockpit: the logo on its dark background. The foreground images are
+     already sized to the adaptive-icon safe zone, so no inset here.
+     Regenerate them from branding/cockpit-icon.webp. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
   <background android:drawable="@color/ic_launcher_background"/>
-  <foreground>
-      <inset
-          android:drawable="@drawable/ic_launcher_foreground"
-          android:inset="16%" />
-  </foreground>
-  <monochrome>
-      <inset
-          android:drawable="@drawable/ic_launcher_monochrome"
-          android:inset="16%" />
-  </monochrome>
+  <foreground android:drawable="@drawable/ic_launcher_cockpit"/>
+  <monochrome android:drawable="@drawable/ic_launcher_cockpit_mono"/>
 </adaptive-icon>

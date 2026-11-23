@@ -31,7 +31,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.streak.app"
+        // This fork installs as its own app, next to the original Streak.
+        applicationId = "io.github.samy1603.cockpit"
         minSdk = 28
         targetSdk = 36
         versionCode = flutter.versionCode

@@ -27,7 +27,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
 
     <application
-        android:label="Streak"
+        android:label="Cockpit"
         android:name="${applicationName}"
         android:appComponentFactory="com.streak.app.StreakComponentFactory"
         tools:replace="android:appComponentFactory"
@@ -63,7 +63,7 @@
             android:enabled="true"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
-            android:label="Streak">
+            android:label="Cockpit">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -76,7 +76,7 @@
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_neutral"
-            android:label="Streak">
+            android:label="Cockpit">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -89,7 +89,7 @@
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_accent"
-            android:label="Streak">
+            android:label="Cockpit">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
