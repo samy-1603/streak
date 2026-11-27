@@ -73,10 +73,18 @@ class SettingsController extends ChangeNotifier {
     _consistencyPeriod = LocalStore.setting('consistencyPeriod', 2);
     _startView = LocalStore.setting('startView', 0);
     _planningEnabled = LocalStore.setting('planningEnabled', true);
-    _planContent = LocalStore.setting(
-      'planContent',
-      LocalStore.setting('planTodos', false) ? 1 : 0,
-    );
+    // 0 = habits only, 1 = habits and tasks, 2 = tasks only. Cockpit's
+    // Calendar is meant to show tasks, so it defaults to habits and tasks.
+    _planContent = LocalStore.setting('planContent', 1);
+    if (!LocalStore.setting(_calendarTasksKey, false)) {
+      // Once, for setups carried over from Streak where the plan showed only
+      // habits: turn tasks on. A later choice in Settings is kept.
+      if (_planContent == 0) {
+        _planContent = 1;
+        LocalStore.writeSetting('planContent', 1);
+      }
+      LocalStore.writeSetting(_calendarTasksKey, true);
+    }
     _planMonth = LocalStore.setting('planMonth', false);
     _swipeCards = LocalStore.setting('swipeCards', false);
     _cardActivity = LocalStore.setting('cardActivity', true);
@@ -397,6 +405,8 @@ class SettingsController extends ChangeNotifier {
   }
 
   int get planContent => _planContent;
+
+  static const _calendarTasksKey = 'calendarShowsTasks';
 
   bool get planTodos => todosEnabled && _planContent != 0;
 

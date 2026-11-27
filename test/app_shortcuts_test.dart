@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:streak/app/home_shell.dart';
 import 'package:streak/core/shortcuts/app_shortcuts.dart';
+import 'package:streak/features/focus/pages/focus_setup_page.dart';
 import 'package:streak/features/habits/pages/habit_form_page.dart';
 import 'package:streak/features/habits/pages/home_page.dart';
 import 'package:streak/features/settings/pages/settings_page.dart';
@@ -75,10 +76,11 @@ void main() {
     expect(find.byType(HomePage), findsOneWidget);
   });
 
-  testWidgets('a tab number that does not exist is ignored', (tester) async {
+  testWidgets('focus has its own tab, right before stats', (tester) async {
     await shell(tester);
-    await chord(tester, LogicalKeyboardKey.digit5);
     await chord(tester, LogicalKeyboardKey.digit4);
+    expect(find.byType(FocusSetupPage), findsOneWidget);
+    await chord(tester, LogicalKeyboardKey.digit5);
     expect(find.byType(StatisticsPage), findsOneWidget);
   });
 

@@ -16,8 +16,12 @@ import 'package:streak/core/widgets/glass.dart';
 import 'package:streak/features/habits/data/day_plan.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/features/todos/data/todo_chip.dart';
 
 typedef DayTally = ({int done, int due});
+
+/// The tasks to show inside a day of the month view.
+typedef DayChips = List<TodoChip> Function(DateTime day);
 
 class TimelineWeekStrip extends StatefulWidget {
   const TimelineWeekStrip({
@@ -32,7 +36,11 @@ class TimelineWeekStrip extends StatefulWidget {
     required this.onSelected,
     required this.onShift,
     required this.onFold,
+    this.chipsOn,
   });
+
+  /// Tasks per day, drawn as small coloured labels in the month view.
+  final DayChips? chipsOn;
 
   final DateTime first;
   final DateTime selected;
@@ -166,6 +174,10 @@ class _TimelineWeekStripState extends State<TimelineWeekStrip>
                     selected: weeks[w].addDays(i).isSameDay(widget.selected),
                     outside: weeks[w].addDays(i).month != widget.selected.month,
                     tally: tallies[w][i],
+                    chips: fold > 0
+                        ? widget.chipsOn?.call(weeks[w].addDays(i)) ?? const []
+                        : const [],
+                    roomy: widget.chipsOn != null,
                     style: widget.style,
                     fold: fold,
                     onTap: widget.onSelected,
@@ -404,7 +416,12 @@ class _DayCard extends StatelessWidget {
     required this.style,
     required this.fold,
     required this.onTap,
+    this.chips = const [],
+    this.roomy = false,
   });
+
+  /// How many task labels fit in a month-view day before "+n".
+  static const _maxChips = 2;
 
   final DateTime day;
   final String label;
@@ -412,6 +429,10 @@ class _DayCard extends StatelessWidget {
   final bool selected;
   final bool outside;
   final DayTally tally;
+  final List<TodoChip> chips;
+
+  /// Month-view days are taller, with room for task labels.
+  final bool roomy;
   final int style;
   final double fold;
   final ValueChanged<DateTime> onTap;
@@ -441,7 +462,7 @@ class _DayCard extends StatelessWidget {
       child: GestureDetector(
         onTap: () => onTap(day),
         child: SizedBox(
-            height: lerpDouble(66, 46, fold),
+            height: lerpDouble(66, roomy ? 74 : 46, fold),
             child: AnimatedContainer(
               duration:
                   express ? Express.morph : const Duration(milliseconds: 220),
@@ -461,8 +482,12 @@ class _DayCard extends StatelessWidget {
               child: MediaQuery.withClampedTextScaling(
                 maxScaleFactor: 1.15,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  // Month days with room for labels line up at the top.
+                  mainAxisAlignment: roomy && fold > 0.5
+                      ? MainAxisAlignment.start
+                      : MainAxisAlignment.center,
                   children: [
+                    if (roomy && fold > 0.5) SizedBox(height: 5 * fold),
                     if (fold < 1)
                       ClipRect(
                         child: Align(
@@ -520,10 +545,20 @@ class _DayCard extends StatelessWidget {
                     ),
                     ),
                     SizedBox(height: lerpDouble(3, 2, fold)),
-                    _DayMeter(
-                      tally: tally,
-                      color: selected ? ink : fade(strong),
-                    ),
+                    if (chips.isEmpty)
+                      _DayMeter(
+                        tally: tally,
+                        color: selected ? ink : fade(strong),
+                      )
+                    else
+                      Opacity(
+                        opacity: fold * dim,
+                        child: _DayChips(
+                          chips: chips,
+                          max: _maxChips,
+                          more: selected ? ink : muted,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -567,6 +602,66 @@ class _DayMeter extends StatelessWidget {
             decoration: BoxDecoration(color: color, borderRadius: radius),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A month-view day's tasks: up to [max] coloured labels, then "+n".
+class _DayChips extends StatelessWidget {
+  const _DayChips({required this.chips, required this.max, required this.more});
+
+  final List<TodoChip> chips;
+  final int max;
+  final Color more;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = chips.take(max).toList();
+    final hidden = chips.length - shown.length;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final chip in shown)
+            Container(
+              height: 13,
+              margin: const EdgeInsets.only(bottom: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              alignment: AlignmentDirectional.centerStart,
+              decoration: BoxDecoration(
+                color: chip.color.withValues(alpha: chip.done ? 0.35 : 0.9),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text(
+                chip.title,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.clip,
+                style: TextStyle(
+                  fontSize: 8.5,
+                  height: 1.1,
+                  fontWeight: FontWeight.w600,
+                  color: TodoChip.inkOn(chip.color)
+                      .withValues(alpha: chip.done ? 0.6 : 1),
+                  decoration: chip.done ? TextDecoration.lineThrough : null,
+                ),
+              ),
+            ),
+          if (hidden > 0)
+            Text(
+              '+$hidden',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 8.5,
+                height: 1.1,
+                fontWeight: FontWeight.w700,
+                color: more,
+              ),
+            ),
+        ],
       ),
     );
   }

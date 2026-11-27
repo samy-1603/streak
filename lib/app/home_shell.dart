@@ -24,6 +24,7 @@ import 'package:streak/core/shortcuts/app_shortcuts.dart';
 import 'package:streak/core/utils/responsive.dart';
 import 'package:streak/core/widgets/page_motion.dart';
 import 'package:streak/core/widgets/glass.dart';
+import 'package:streak/features/focus/pages/focus_setup_page.dart';
 import 'package:streak/features/focus/state/focus_actions.dart';
 import 'package:streak/features/focus/state/focus_controller.dart';
 import 'package:streak/features/habits/data/habit.dart';
@@ -55,7 +56,7 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-enum _Tab { today, todos, plan, stats, settings }
+enum _Tab { today, todos, plan, focus, stats, settings }
 
 final _paneTab = ValueNotifier(_Tab.today);
 
@@ -344,6 +345,7 @@ class _HomeShellState extends State<HomeShell>
       _Tab.today,
       if (settings.todosEnabled) _Tab.todos,
       if (settings.planningEnabled) _Tab.plan,
+      if (settings.focusEnabled) _Tab.focus,
       _Tab.stats,
       _Tab.settings,
     ];
@@ -454,6 +456,7 @@ Widget _pageOf(_Tab tab) => switch (tab) {
       _Tab.today => const HomePage(),
       _Tab.todos => const TodosPage(),
       _Tab.plan => const DayTimelinePage(),
+      _Tab.focus => const FocusSetupPage(embedded: true),
       _Tab.stats => const StatisticsPage(),
       _Tab.settings => const SettingsPage(),
     };
@@ -461,7 +464,8 @@ Widget _pageOf(_Tab tab) => switch (tab) {
 IconData _iconOf(_Tab tab) => switch (tab) {
       _Tab.today => LucideIcons.house,
       _Tab.todos => LucideIcons.listChecks,
-      _Tab.plan => LucideIcons.calendarClock,
+      _Tab.plan => LucideIcons.calendarDays,
+      _Tab.focus => LucideIcons.timer,
       _Tab.stats => LucideIcons.chartColumn,
       _Tab.settings => LucideIcons.settings,
     };
@@ -469,7 +473,8 @@ IconData _iconOf(_Tab tab) => switch (tab) {
 String _labelOf(BuildContext context, _Tab tab) => switch (tab) {
       _Tab.today => context.l10n.today,
       _Tab.todos => context.l10n.todos,
-      _Tab.plan => context.l10n.plan_tab,
+      _Tab.plan => context.l10n.calendar_tab,
+      _Tab.focus => context.l10n.focus,
       _Tab.stats => context.l10n.stats,
       _Tab.settings => context.l10n.settings,
     };

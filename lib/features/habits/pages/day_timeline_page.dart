@@ -28,6 +28,8 @@ import 'package:streak/features/habits/widgets/focus_only_dialog.dart';
 import 'package:streak/features/habits/widgets/unscheduled_day_dialog.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/todos/data/todo.dart';
+import 'package:streak/features/todos/data/todo_chip.dart';
+import 'package:streak/features/todos/state/todo_tags_controller.dart';
 import 'package:streak/features/todos/pages/todo_editor_page.dart';
 import 'package:streak/features/todos/state/todos_controller.dart';
 import 'package:streak/features/todos/widgets/todo_paper.dart';
@@ -322,6 +324,42 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
     final minimal = style.isMinimalStyle;
     final pushed = ModalRoute.of(context)?.canPop ?? false;
 
+    // In the month view each day lists its tasks, and the calendar scrolls
+    // together with the chosen day's list instead of staying pinned.
+    final monthView = style.planMonth;
+    DayChips? chipsOn;
+    if (style.planTodos) {
+      final allTodos = context.watch<TodosController>();
+      final tags = context.watch<TodoTagsController>();
+      final fallback = context.colors.primary;
+      chipsOn = (day) =>
+          TodoChip.forDay(allTodos.dueOn(day), tags.byId, fallback: fallback);
+    }
+    final strip = TimelineWeekStrip(
+      first: first,
+      selected: _day,
+      habits: habits,
+      style: style.appStyle,
+      direction: _direction,
+      page: _flip,
+      month: monthView,
+      chipsOn: chipsOn,
+      onSelected: _select,
+      onShift: _shift,
+      onFold: () {
+        style.setPlanMonth(!style.planMonth);
+        setState(() {});
+      },
+    );
+    final empty = AppEmptyState(
+      icon: LucideIcons.calendarClock,
+      title: context.l10n.day_timeline_empty,
+      message: style.planHabits
+          ? context.l10n.day_timeline_empty_sub
+          : context.l10n.day_timeline_empty_todos,
+    );
+    final nothing = plan.isEmpty && todos.isEmpty;
+
     return _page = Scaffold(
       appBar: AppBar(
         toolbarHeight: express ? 60 : null,
@@ -413,21 +451,7 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
                     title: DateFormat.yMMMM(locale).format(_day),
                   ),
                 ),
-              TimelineWeekStrip(
-                first: first,
-                selected: _day,
-                habits: habits,
-                style: style.appStyle,
-                direction: _direction,
-                page: _flip,
-                month: style.planMonth,
-                onSelected: _select,
-                onShift: _shift,
-                onFold: () {
-                  style.setPlanMonth(!style.planMonth);
-                  setState(() {});
-                },
-              ),
+              if (!monthView) strip,
               Expanded(
                 child: NotificationListener<ScrollUpdateNotification>(
                   onNotification: (note) {
@@ -438,17 +462,21 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
                   },
                   child: Stack(
                     children: [
-                plan.isEmpty && todos.isEmpty
-                    ? AppEmptyState(
-                        icon: LucideIcons.calendarClock,
-                        title: context.l10n.day_timeline_empty,
-                        message: style.planHabits
-                            ? context.l10n.day_timeline_empty_sub
-                            : context.l10n.day_timeline_empty_todos,
-                      )
+                nothing && !monthView
+                    ? empty
                     : CustomScrollView(
-                        key: ValueKey(_day.epochDay),
+                        key: monthView ? null : ValueKey(_day.epochDay),
                         slivers: [
+                          if (monthView) SliverToBoxAdapter(child: strip),
+                          if (nothing)
+                            SliverPadding(
+                              padding: EdgeInsets.only(
+                                top: 8,
+                                bottom: pushed ? 28 : 148,
+                              ),
+                              sliver: SliverToBoxAdapter(child: empty),
+                            )
+                          else
                           SliverPadding(
                             padding: context.pagePadding(
                               16,

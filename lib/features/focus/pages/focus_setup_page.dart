@@ -19,6 +19,7 @@ import 'package:streak/features/focus/state/focus_controller.dart';
 import 'package:streak/features/focus/widgets/focus_dial.dart';
 import 'package:streak/features/focus/widgets/focus_duration_fields.dart';
 import 'package:streak/features/focus/widgets/focus_habit_card.dart';
+import 'package:streak/features/focus/widgets/focus_pill.dart';
 import 'package:streak/features/focus/widgets/focus_setup_parts.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
@@ -29,9 +30,16 @@ const _minutePresets = [15, 25, 45, 60];
 const _breakPresets = [5, 10, 15];
 
 class FocusSetupPage extends StatefulWidget {
-  const FocusSetupPage({super.key, this.habitId});
+  const FocusSetupPage({super.key, this.habitId, this.embedded = false});
 
   final String? habitId;
+
+  /// Shown as the Focus tab of the bottom bar rather than pushed as a page:
+  /// no close button, and starting a timer does not close it.
+  final bool embedded;
+
+  /// Room left at the bottom for the floating bottom bar when embedded.
+  static const _barRoom = 86.0;
 
   @override
   State<FocusSetupPage> createState() => _FocusSetupPageState();
@@ -216,6 +224,15 @@ class _FocusSetupPageState extends State<FocusSetupPage> with ShortcutHost {
   }
 
   void _start() {
+    if (context.read<FocusController>().isActive) {
+      // A timer is already running: go back to it instead of a second one.
+      AppNavigator.push(
+        const FocusPage(),
+        fade: true,
+        name: FocusPage.routeName,
+      );
+      return;
+    }
     final breakMinutes = _mode == FocusMode.pomodoro ? _breakMinutes : 0;
     final habits = context.read<HabitsController>();
     final habit = habits.byId(_habitId);
@@ -233,7 +250,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with ShortcutHost {
         ),
       );
     }
-    AppNavigator.pop();
+    if (!widget.embedded) AppNavigator.pop();
     AppNavigator.push(
       FocusPage(
         startHabitId: _habitId,
@@ -353,8 +370,11 @@ class _FocusSetupPageState extends State<FocusSetupPage> with ShortcutHost {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: express ? 60 : null,
-        leadingWidth: express ? 68 : null,
-        leading: express
+        leadingWidth: express && !widget.embedded ? 68 : null,
+        automaticallyImplyLeading: !widget.embedded,
+        leading: widget.embedded
+            ? null
+            : express
             ? Padding(
                 padding: const EdgeInsets.only(left: 16),
                 child: Center(
@@ -410,8 +430,14 @@ class _FocusSetupPageState extends State<FocusSetupPage> with ShortcutHost {
                 builder: (context, constraints) {
                   final dial = (constraints.maxWidth * 0.6).clamp(190.0, 280.0);
                   return ListView(
-                    padding: EdgeInsets.fromLTRB(side, 0, side, 92),
+                    padding: EdgeInsets.fromLTRB(
+                      side,
+                      0,
+                      side,
+                      92 + (widget.embedded ? FocusSetupPage._barRoom : 0),
+                    ),
                     children: [
+                      const _RunningTimerBanner(),
                       Entrance(
                         delay: _entrance,
                         child: const FocusTodayStrip(),
@@ -493,7 +519,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with ShortcutHost {
             Positioned(
               left: 0,
               right: 0,
-              bottom: 0,
+              bottom: widget.embedded ? FocusSetupPage._barRoom : 0,
               child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Entrance(
@@ -542,6 +568,22 @@ class _FocusSetupPageState extends State<FocusSetupPage> with ShortcutHost {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// When a timer is already running, a tappable pill with its live time that
+/// leads back to it (mainly for the Focus tab, which stays open meanwhile).
+class _RunningTimerBanner extends StatelessWidget {
+  const _RunningTimerBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final active = context.select<FocusController, bool>((f) => f.isActive);
+    if (!active) return const SizedBox.shrink();
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 12),
+      child: Center(child: FocusPill()),
     );
   }
 }
