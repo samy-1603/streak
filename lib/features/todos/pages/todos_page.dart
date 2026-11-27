@@ -28,14 +28,13 @@ import 'package:streak/features/todos/widgets/folder_shape.dart';
 import 'package:streak/features/todos/widgets/todo_add_menu.dart';
 import 'package:streak/features/todos/widgets/todo_deal.dart';
 import 'package:streak/features/todos/widgets/todo_bulk_edit.dart';
-import 'package:streak/features/todos/widgets/todo_empty_folder.dart';
 import 'package:streak/features/todos/widgets/todo_select_bar.dart';
 import 'package:streak/features/todos/widgets/todo_trash.dart';
 import 'package:streak/core/widgets/hold_menu.dart';
 import 'package:streak/core/widgets/glass.dart';
 import 'package:streak/features/todos/widgets/todo_paper.dart';
 import 'package:streak/features/todos/widgets/todo_labels.dart';
-import 'package:streak/features/todos/widgets/todo_projects.dart';
+import 'package:streak/features/todos/widgets/todo_category_tabs.dart';
 import 'package:streak/features/habits/widgets/focus_only_dialog.dart';
 import 'package:streak/features/todos/widgets/todo_tag_sheet.dart';
 import 'package:streak/features/todos/widgets/todo_tile.dart';
@@ -63,21 +62,42 @@ class _TodosPageState extends State<TodosPage>
 
   Future<void> _newProject() async {
     await createProject(context);
-    if (mounted) setState(() => _folders = context.read<SettingsController>().todoPapers);
+    if (mounted) setState(() {});
   }
 
   bool _showCompleted = false;
   bool _searching = false;
-  late bool _folders = context.read<TodoTagsController>().projects.isNotEmpty &&
-      context.read<SettingsController>().todoPapers &&
-      LocalStore.setting('todoFolders', true);
+
+  /// Cockpit switches categories with tabs above the list; the folder grid
+  /// is gone.
+  bool get _folders => false;
   String _query = '';
   String? _tagFilter;
-  String? _projectFilter;
+
+  /// The chosen category (a project id), or null for All. Remembered.
+  String? _projectFilter = _savedCategory();
+
+  static const _categoryKey = 'todoCategory';
+
+  static String? _savedCategory() {
+    final saved = LocalStore.setting(_categoryKey, '');
+    return saved.isEmpty ? null : saved;
+  }
+
+  void _setCategory(String? id) {
+    if (id == _projectFilter) return;
+    setState(() {
+      _projectFilter = id;
+      _tagFilter = null;
+    });
+    unawaited(LocalStore.writeSetting(_categoryKey, id ?? ''));
+  }
+
+  // Left from the folder animation, which the category tabs replaced.
   Rect? _home;
-  bool _dealing = false;
-  bool _closing = false;
-  bool _ghosted = false;
+  final bool _dealing = false;
+  final bool _closing = false;
+  final bool _ghosted = false;
   String? _returning;
   Timer? _dealTimer;
   final _completing = <String>{};
@@ -139,49 +159,16 @@ class _TodosPageState extends State<TodosPage>
     super.dispose();
   }
 
-  bool get _holdsBack =>
-      _selected.isNotEmpty ||
-      _searching ||
-      (!_folders && _projectFilter != null);
+  bool get _holdsBack => _selected.isNotEmpty || _searching;
 
   bool _backOut() {
     if (!_holdsBack || !BackHandlers.isVisible(context)) return false;
     if (_selected.isNotEmpty) {
       setState(_selected.clear);
     } else {
-      _searching ? _toggleSearch() : _closeFolder();
+      _toggleSearch();
     }
     return true;
-  }
-
-  void _openFolder(String? projectId, Rect origin) {
-    if (_closing) return;
-    _dealTimer?.cancel();
-    _dealTimer = Timer(
-      const Duration(milliseconds: 1100),
-      () => setState(() => _dealing = false),
-    );
-    final todos = context.read<TodosController>();
-    final pending = projectId == null || projectId.isEmpty
-        ? todos.looseCount
-        : todos.projectCount(projectId);
-    _ghosted = pending > 0;
-    _ghost.value = 1;
-    _ghost.animateTo(
-      0,
-      duration: const Duration(milliseconds: 460),
-      curve: const Interval(0.25, 1, curve: Curves.easeInOutCubic),
-    );
-    _shown.clear();
-    _spots.clear();
-    setState(() {
-      _projectFilter = projectId;
-      _tagFilter = null;
-      _folders = false;
-      _home = origin;
-      _dealing = true;
-      _returning = null;
-    });
   }
 
   Future<void> _toggle(Todo todo) async {
@@ -194,36 +181,6 @@ class _TodosPageState extends State<TodosPage>
     if (!mounted) return;
     await todos.toggle(todo.id);
     if (mounted) setState(() => _completing.remove(todo.id));
-  }
-
-  Future<void> _closeFolder() async {
-    if (_closing) return;
-    if (_home != null) {
-      _dealTimer?.cancel();
-      setState(() {
-        _closing = true;
-        _dealing = false;
-      });
-      _ghost.animateTo(
-        1,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-      );
-      await Future<void>.delayed(todoDealBack);
-      if (!mounted) return;
-    }
-    _ghost.value = 0;
-    setState(() {
-      _returning = _home == null ? null : _projectFilter;
-      _projectFilter = null;
-      _tagFilter = null;
-      _searching = false;
-      _query = '';
-      _folders = true;
-      _closing = false;
-      _home = null;
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _returning = null);
   }
 
   Rect? _rectOf(BuildContext? context) {
@@ -723,7 +680,7 @@ class _TodosPageState extends State<TodosPage>
     if (!mounted || picked == null) return;
     if (picked == 1) return _compose();
     await createProject(context);
-    if (mounted) setState(() => _folders = context.read<SettingsController>().todoPapers);
+    if (mounted) setState(() {});
   }
 
   Future<void> _delete(Todo todo) => _confirmTrash([todo]);
@@ -750,11 +707,10 @@ class _TodosPageState extends State<TodosPage>
     final tags = context.watch<TodoTagsController>();
     final papers = style.todoPapers;
     final classic = !minimal && !express;
-    if (!papers) _folders = false;
     if (_projectFilter case final id? when id.isNotEmpty && tags.byId(id) == null) {
+      // The category was deleted: back to All.
       _projectFilter = null;
       _tagFilter = null;
-      _folders = papers;
     }
     final labels = _projectFilter == null
         ? tags.labels
@@ -764,8 +720,6 @@ class _TodosPageState extends State<TodosPage>
                   todos.countFor(tag.id, project: _projectFilter) > 0)
                 tag,
           ];
-    final openProject =
-        _projectFilter == null ? null : tags.byId(_projectFilter!);
     final all = todos.sections;
     final sections = _visibleSections(all);
     final completed = todos.completed.where(_matches).toList();
@@ -790,25 +744,6 @@ class _TodosPageState extends State<TodosPage>
               )
             : null,
         actions: [
-          if (papers)
-          _HeaderAction(
-            glass: classic,
-            tooltip: context.l10n.todo_switch_view,
-            icon: Icon(_folders ? LucideIcons.list : LucideIcons.folder,
-                size: 20),
-            onTap: () => !_folders && _projectFilter != null
-                ? _closeFolder()
-                : setState(() {
-              _folders = !_folders;
-              unawaited(LocalStore.writeSetting('todoFolders', _folders));
-              if (_folders) {
-                _tagFilter = null;
-                _projectFilter = null;
-                _searching = false;
-                _query = '';
-              }
-            }),
-          ),
           if (searchable && !_folders)
             _HeaderAction(
             glass: classic,
@@ -840,6 +775,14 @@ class _TodosPageState extends State<TodosPage>
           _ghostLayer(tags, FolderLayer.back),
           Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: TodoCategoryTabs(
+                  selected: _projectFilter,
+                  onSelected: _setCategory,
+                  padding: EdgeInsets.symmetric(horizontal: minimal ? 22 : 16),
+                ),
+              ),
               if (_searching && !_folders)
                 Padding(
                   padding: EdgeInsets.fromLTRB(minimal ? 22 : 16, 0,
@@ -851,31 +794,14 @@ class _TodosPageState extends State<TodosPage>
                         setState(() => _query = value.trim().toLowerCase()),
                   ),
                 ),
-              if (papers && !_folders && _projectFilter != null)
-                FadeTransition(
-                  opacity: ReverseAnimation(_ghost),
-                  child: TodoProjectBar(
-                  project: openProject,
-                  minimal: minimal,
-                  onClear: _closeFolder,
-                ),
-                ),
-              if (!_folders &&
-                  (labels.isNotEmpty || (!papers && tags.projects.isNotEmpty)))
-                FadeTransition(
-                  opacity: ReverseAnimation(_ghost),
-                  child: TodoTagBar(
+              if (labels.isNotEmpty)
+                TodoTagBar(
                   tags: labels,
                   selected: _tagFilter,
                   untagged: todos.untaggedCount(project: _projectFilter),
                   project: _projectFilter,
                   minimal: minimal,
                   onSelected: (id) => setState(() => _tagFilter = id),
-                  projects: tags.projects,
-                  onProject: papers
-                      ? null
-                      : (id) => setState(() => _projectFilter = id),
-                ),
                 ),
               Expanded(
                 child: NotificationListener<ScrollUpdateNotification>(
@@ -900,32 +826,13 @@ class _TodosPageState extends State<TodosPage>
                     alignment: Alignment.topCenter,
                     children: [...previous, ?current],
                   ),
-                  child: _folders
-                    ? SingleChildScrollView(
-                        key: const PageStorageKey('folders'),
-                        padding: context.pagePadding(
-                          minimal ? 22 : 16,
-                          4,
-                          minimal ? 22 : 16,
-                          minimal ? 96 : 148,
-                        ),
-                        child: TodoProjects(
-                          onOpen: _openFolder,
-                          returning: _returning,
-                        ),
-                      )
-                    : papers &&
-                        sections.isEmpty &&
-                        completed.isEmpty &&
-                        _projectFilter != null &&
-                        _query.isEmpty &&
-                        _tagFilter == null
-                    ? TodoEmptyFolder(
-                        key: const ValueKey('empty-folder'),
-                        project: openProject,
-                        home: _home,
-                        closing: _closing,
-                        onAdd: _compose,
+                  child: sections.isEmpty && completed.isEmpty &&
+                          _projectFilter != null &&
+                          _query.isEmpty &&
+                          _tagFilter == null
+                    ? KeyedSubtree(
+                        key: ValueKey('empty-$_projectFilter'),
+                        child: TodoEmptyState(onAdd: _compose),
                       )
                     : sections.isEmpty && completed.isEmpty
                     ? (!_filtering

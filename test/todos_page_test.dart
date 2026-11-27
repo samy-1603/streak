@@ -6,6 +6,7 @@ import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/features/todos/data/todo.dart';
 import 'package:streak/features/todos/data/todo_tag.dart';
 import 'package:streak/features/todos/pages/todos_page.dart';
+import 'package:streak/features/todos/widgets/todo_category_tabs.dart';
 import 'package:streak/features/todos/widgets/todo_tag_sheet.dart';
 import 'package:streak/features/todos/widgets/todo_tile.dart';
 import 'package:streak/features/todos/widgets/todos_page_parts.dart';
@@ -144,63 +145,58 @@ void main() {
     expect(find.text('Call the plumber'), findsOneWidget);
   });
 
-  Future<void> seedProjects(WidgetTester tester) => tester.runAsync(() async {
-        const names = ['One', 'Two', 'Three', 'Four'];
-        for (final (index, name) in names.indexed) {
-          await LocalStore.writeTodoTag(
-            TodoTag(
-              id: 'p$index',
-              name: name,
-              color: const Color(0xFF7C5CFC),
-              order: index,
-              kind: TodoTagKind.project,
-            ),
-          );
+  Future<void> seedCategories(WidgetTester tester) => tester.runAsync(() async {
+        for (final tag in const [
+          TodoTag(id: 'p1', name: 'Residency', color: Color(0xFF1E88E5),
+              kind: TodoTagKind.project),
+          TodoTag(id: 'p2', name: 'Errands', color: Color(0xFF34C759), order: 1,
+              kind: TodoTagKind.project),
+        ]) {
+          await LocalStore.writeTodoTag(tag);
+        }
+        for (final todo in [
+          Todo(id: 'a', text: 'Study cardio', project: 'p1',
+              createdAt: AppClock.now()),
+          Todo(id: 'b', text: 'Buy milk', project: 'p2',
+              createdAt: AppClock.now()),
+        ]) {
+          await LocalStore.writeTodo(todo);
         }
       });
 
-  List<String> onScreen(WidgetTester tester) {
-    final found = <(Offset, String)>[
-      for (final name in const ['One', 'Two', 'Three', 'Four'])
-        (tester.getCenter(find.text(name)), name),
-    ];
-    found.sort((a, b) {
-      final row = (a.$1.dy ~/ 40).compareTo(b.$1.dy ~/ 40);
-      return row != 0 ? row : a.$1.dx.compareTo(b.$1.dx);
-    });
-    return [for (final entry in found) entry.$2];
-  }
+  Finder tab(String name) => find.descendant(
+        of: find.byType(TodoCategoryTabs),
+        matching: find.text(name),
+      );
 
-  testWidgets('the menu opens the arranging mode and the drag sticks',
+  testWidgets('category tabs switch the list and remember the choice',
       (tester) async {
-    await seedProjects(tester);
+    await seedCategories(tester);
     await pumpScreen(tester, const TodosPage());
 
-    expect(onScreen(tester), ['One', 'Two', 'Three', 'Four']);
+    expect(tab('All'), findsOneWidget);
+    expect(find.text('Study cardio'), findsOneWidget);
+    expect(find.text('Buy milk'), findsOneWidget);
 
-    await tester.tap(find.byIcon(LucideIcons.ellipsis).first);
+    await tester.tap(tab('Errands'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(LucideIcons.move));
-    for (var i = 0; i < 6; i++) {
-      await tester.pump(const Duration(milliseconds: 200));
-    }
+    expect(find.text('Buy milk'), findsOneWidget);
+    expect(find.text('Study cardio'), findsNothing);
+    expect(LocalStore.setting('todoCategory', ''), 'p2');
 
-    expect(find.text('Done'), findsOneWidget);
-
-    final start = tester.getCenter(find.text('One'));
-    final target = tester.getCenter(find.text('Three'));
-    final gesture = await tester.startGesture(start);
-    await tester.pump(const Duration(milliseconds: 200));
-    await gesture.moveTo(target);
-    await tester.pump(const Duration(milliseconds: 100));
-    await gesture.up();
-    await tester.pump(const Duration(milliseconds: 400));
-
-    expect(onScreen(tester), ['Two', 'Three', 'One', 'Four']);
-
-    await tester.tap(find.text('Done'));
+    await tester.tap(tab('All'));
     await tester.pumpAndSettle();
-    expect(find.text('Done'), findsNothing);
+    expect(find.text('Study cardio'), findsOneWidget);
+    expect(LocalStore.setting('todoCategory', 'x'), '');
+  });
+
+  testWidgets('the task list opens on the last category used', (tester) async {
+    await seedCategories(tester);
+    await tester.runAsync(() => LocalStore.writeSetting('todoCategory', 'p1'));
+    await pumpScreen(tester, const TodosPage());
+
+    expect(find.text('Study cardio'), findsOneWidget);
+    expect(find.text('Buy milk'), findsNothing);
   });
 
   testWidgets('inside a project the bar only offers that project tags',
@@ -227,14 +223,10 @@ void main() {
     });
     await pumpScreen(tester, const TodosPage());
 
-    await tester.tap(find.byTooltip('Change view'));
-    await tester.pumpAndSettle();
     expect(find.widgetWithText(TodoTagChip, 'urgent'), findsOneWidget);
     expect(find.widgetWithText(TodoTagChip, 'later'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Change view'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('School'));
+    await tester.tap(tab('School'));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(TodoTagChip, 'urgent'), findsOneWidget);

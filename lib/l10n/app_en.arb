@@ -1622,6 +1622,7 @@
   "quiet_when_done_sub": "No more reminders today for a habit you already completed",
   "plan_tab": "Plan",
   "calendar_tab": "Calendar",
+  "todo_category_all": "All",
   "difficulty": "Difficulty",
   "difficulty_hint": "Harder habits count for more in the day's progress",
   "difficulty_easy": "Easy",
