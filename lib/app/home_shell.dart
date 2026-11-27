@@ -52,6 +52,13 @@ class HomeShell extends StatefulWidget {
     _toSettings.value++;
   }
 
+  /// Opens the Calendar tab on [day] (when the Calendar is turned on).
+  static void showCalendar(DateTime day) {
+    AppNavigator.key.currentState?.popUntil((route) => route.isFirst);
+    calendarJump.value = day;
+    _toCalendar.value++;
+  }
+
   @override
   State<HomeShell> createState() => _HomeShellState();
 }
@@ -61,6 +68,8 @@ enum _Tab { today, todos, plan, focus, stats, settings }
 final _paneTab = ValueNotifier(_Tab.today);
 
 final _toSettings = ValueNotifier(0);
+
+final _toCalendar = ValueNotifier(0);
 
 class _HomeShellState extends State<HomeShell>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin, ShortcutHost {
@@ -111,6 +120,7 @@ class _HomeShellState extends State<HomeShell>
     );
     WidgetsBinding.instance.addObserver(this);
     _toSettings.addListener(_openSettings);
+    _toCalendar.addListener(_openCalendar);
     final focus = context.read<FocusController>();
     final habits = context.read<HabitsController>();
     final todos = context.read<TodosController>();
@@ -184,6 +194,7 @@ class _HomeShellState extends State<HomeShell>
     _swap.dispose();
     _compact.dispose();
     _toSettings.removeListener(_openSettings);
+    _toCalendar.removeListener(_openCalendar);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -210,6 +221,15 @@ class _HomeShellState extends State<HomeShell>
       _tab = _Tab.settings;
     });
     _paneTab.value = _Tab.settings;
+  }
+
+  void _openCalendar() {
+    if (!_tabsNow.contains(_Tab.plan)) {
+      // No Calendar tab (turned off, or the minimal layout): show it as a page.
+      AppNavigator.push(const DayTimelinePage(), fade: true);
+      return;
+    }
+    _select(_tabsNow, _Tab.plan);
   }
 
   bool _onScroll(ScrollUpdateNotification note) {

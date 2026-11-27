@@ -8,6 +8,7 @@ import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/utils/app_dirs.dart';
 import 'package:streak/features/todos/data/todo.dart';
 import 'package:streak/features/todos/data/todo_groups.dart';
+import 'package:streak/services/calendar_widget_service.dart';
 import 'package:streak/services/home_widget_service.dart';
 
 class TodosWidgetService {
@@ -40,6 +41,7 @@ class TodosWidgetService {
     } catch (e) {
       debugPrint('To-do widget sync failed: $e');
     }
+    await CalendarWidgetService.sync(todos);
   }
 
   static String _encode(List<Todo> todos) {

@@ -2,12 +2,18 @@
 <resources>
     <string name="app_name">Streak</string>
     <string name="widget_description">Track your habits and build streaks</string>
-    <string name="widget_heatmap_label">Streak heatmap</string>
-    <string name="widget_habit_label">Streak habits</string>
-    <string name="widget_today_label">Streak today</string>
-    <string name="widget_stats_label">Streak summary</string>
-    <string name="widget_focus_label">Streak focus</string>
-    <string name="widget_focus_board_label">Streak focus board</string>
-    <string name="widget_todos_label">Streak to-do</string>
+    <string name="widget_heatmap_label">Cockpit heatmap</string>
+    <string name="widget_habit_label">Cockpit habits</string>
+    <string name="widget_today_label">Cockpit today</string>
+    <string name="widget_stats_label">Cockpit summary</string>
+    <string name="widget_focus_label">Cockpit focus</string>
+    <string name="widget_focus_board_label">Cockpit focus board</string>
+    <string name="widget_todos_label">Cockpit to-do</string>
     <string name="widget_todos_description">See what is left to do today</string>
+    <string name="widget_calendar_label">Cockpit calendar</string>
+    <string name="widget_calendar_description">Your month at a glance, with each day\'s tasks</string>
+    <string name="widget_calendar_today">This month</string>
+    <string name="widget_calendar_previous">Previous month</string>
+    <string name="widget_calendar_next">Next month</string>
+    <string name="widget_calendar_add">Add a task</string>
 </resources>

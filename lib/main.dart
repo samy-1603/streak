@@ -10,7 +10,9 @@ import 'package:streak/app/startup_failure.dart';
 import 'package:streak/app/streak_app.dart';
 import 'package:streak/core/database/local_store.dart';
 import 'package:streak/core/utils/app_dirs.dart';
+import 'package:streak/app/home_shell.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
+import 'package:streak/features/todos/pages/todo_editor_page.dart';
 import 'package:streak/core/routing/app_navigator.dart';
 import 'package:streak/features/focus/pages/focus_page.dart';
 import 'package:streak/features/focus/state/focus_actions.dart';
@@ -216,6 +218,17 @@ void _openPage(String page) {
   if (page.startsWith('focusStart:')) _startFocus(page.substring(11));
   if (page == 'health') AppNavigator.push(const HealthInfoPage(), fade: true);
   if (page.startsWith('day:')) _openDay(page.substring(4));
+  // From the calendar widget: a tapped day, or + to add a task on a day.
+  if (page.startsWith('calendar:')) {
+    HomeShell.showCalendar(parseDayKey(page.substring(9)));
+  }
+  if (page.startsWith('calendarAdd:')) _addTodoOn(page.substring(12));
+}
+
+void _addTodoOn(String dayKey) {
+  final context = AppNavigator.key.currentContext;
+  if (context == null) return;
+  openTodoEditor(context, date: dayKey);
 }
 
 void _openDay(String target) {

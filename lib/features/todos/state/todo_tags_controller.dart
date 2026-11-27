@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:streak/core/database/local_store.dart';
+import 'package:streak/services/calendar_widget_service.dart';
 import 'package:streak/features/todos/data/todo_tag.dart';
 import 'package:uuid/uuid.dart';
 
@@ -68,12 +71,15 @@ class TodoTagsController extends ChangeNotifier {
     _tags[index] = tag;
     notifyListeners();
     await LocalStore.writeTodoTag(tag);
+    // A new colour shows on the calendar widget's labels.
+    unawaited(CalendarWidgetService.sync(LocalStore.readTodos()));
   }
 
   Future<void> remove(String id) async {
     _tags.removeWhere((t) => t.id == id);
     notifyListeners();
     await LocalStore.removeTodoTag(id);
+    unawaited(CalendarWidgetService.sync(LocalStore.readTodos()));
   }
 
   Future<void> reorder(List<TodoTag> ordered) async {

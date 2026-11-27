@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Month calendar widget: a header (today, < month >, +), weekday letters,
+     and the month grid drawn as one image, with a transparent tap target
+     over each day. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/calendar_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/calendar_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:importantForAccessibility="no" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingStart="6dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="6dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/calendar_today"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:padding="9dp"
+                android:src="@drawable/ic_cal_today"
+                android:contentDescription="@string/widget_calendar_today" />
+
+            <ImageView
+                android:id="@+id/calendar_prev"
+                android:layout_width="36dp"
+                android:layout_height="40dp"
+                android:padding="8dp"
+                android:src="@drawable/ic_cal_prev"
+                android:contentDescription="@string/widget_calendar_previous" />
+
+            <TextView
+                android:id="@+id/calendar_title"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/calendar_next"
+                android:layout_width="36dp"
+                android:layout_height="40dp"
+                android:padding="8dp"
+                android:src="@drawable/ic_cal_next"
+                android:contentDescription="@string/widget_calendar_next" />
+
+            <ImageView
+                android:id="@+id/calendar_add"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:padding="8dp"
+                android:src="@drawable/ic_focus_plus"
+                android:contentDescription="@string/widget_calendar_add" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/calendar_weekdays"
+            android:layout_width="match_parent"
+            android:layout_height="18dp"
+            android:scaleType="fitXY"
+            android:importantForAccessibility="no" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <ImageView
+                android:id="@+id/calendar_grid"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="fitXY"
+                android:importantForAccessibility="no" />
+
+            <LinearLayout
+                android:id="@+id/calendar_taps"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical" />
+        </FrameLayout>
+    </LinearLayout>
+</FrameLayout>

@@ -40,6 +40,10 @@ import 'package:streak/core/extensions/color_extensions.dart';
 
 const _entrance = Duration(milliseconds: 60);
 
+/// A day to show in the Calendar, set from outside (e.g. a tap on the
+/// calendar widget). The page takes it and clears it.
+final calendarJump = ValueNotifier<DateTime?>(null);
+
 class DayTimelinePage extends StatefulWidget {
   const DayTimelinePage({super.key});
 
@@ -58,7 +62,27 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
   Widget? _page;
 
   @override
+  void initState() {
+    super.initState();
+    calendarJump.addListener(_takeJump);
+    final waiting = calendarJump.value;
+    if (waiting != null) {
+      _day = waiting.atMidnight;
+      calendarJump.value = null;
+    }
+  }
+
+  void _takeJump() {
+    final day = calendarJump.value;
+    if (day == null || !mounted) return;
+    calendarJump.value = null;
+    _page = null;
+    _select(day);
+  }
+
+  @override
   void dispose() {
+    calendarJump.removeListener(_takeJump);
     _celebration.dispose();
     _scrolled.dispose();
     super.dispose();

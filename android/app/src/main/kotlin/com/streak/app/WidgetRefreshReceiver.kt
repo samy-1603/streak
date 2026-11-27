@@ -43,6 +43,7 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
             FocusBoardWidgetProvider::class.java,
             HeatmapWidgetProvider::class.java,
             TodosWidgetProvider::class.java,
+            CalendarWidgetProvider::class.java,
         )
 
         fun keepFresh(context: Context) {
@@ -52,12 +53,14 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
 
         suspend fun repaint(context: Context) {
             HeatmapRenderer.updateAll(context)
+            CalendarRenderer.updateAll(context)
             GlanceWidgets.updateAll(context)
         }
 
         fun refreshAll(context: Context) {
             if (!hasWidgets(context)) return
             HeatmapRenderer.updateAll(context)
+            CalendarRenderer.updateAll(context)
             WidgetActionWorker.refresh(context)
         }
 

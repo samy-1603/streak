@@ -161,6 +161,20 @@
                 android:resource="@xml/todos_widget_info" />
         </receiver>
 
+        <!-- Month calendar with each day's tasks. -->
+        <receiver
+            android:name=".CalendarWidgetProvider"
+            android:label="@string/widget_calendar_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="es.antonborri.home_widget.action.UPDATE_WIDGET" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_widget_info" />
+        </receiver>
+
         <receiver
             android:name=".TodayWidgetProvider"
             android:label="@string/widget_today_label"
